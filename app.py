@@ -45,18 +45,32 @@ prompt = ChatPromptTemplate.from_template(
 # -----------------------------
 def create_vector_embedding():
     if "vectors" not in st.session_state:
-        st.session_state.embeddings = OpenAIEmbeddings()  # uses OpenAI key securely
+        st.session_state.embeddings = OpenAIEmbeddings()  # uses OpenAI key
         st.session_state.loader = PyPDFDirectoryLoader("research_papers")
         st.session_state.docs = st.session_state.loader.load()
+        st.write(f"Loaded {len(st.session_state.docs)} documents")
+
+        if len(st.session_state.docs) == 0:
+            st.error("No PDF documents found in 'research_papers' folder.")
+            return
+
         st.session_state.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=10000, chunk_overlap=300
+            chunk_size=2000,  # smaller chunks to ensure splitting
+            chunk_overlap=300
         )
         st.session_state.final_documents = st.session_state.text_splitter.split_documents(
             st.session_state.docs[:50]
         )
+        st.write(f"Total document chunks: {len(st.session_state.final_documents)}")
+
+        if len(st.session_state.final_documents) == 0:
+            st.error("No document chunks created. Check PDF content or chunk size.")
+            return
+
         st.session_state.vectors = FAISS.from_documents(
             st.session_state.final_documents, st.session_state.embeddings
         )
+        st.success("Vector database created successfully!")
 
 # -----------------------------
 # Streamlit UI
@@ -69,7 +83,6 @@ user_prompt = st.text_input("Enter your query from the research papers")
 # Button to create vector DB
 if st.button("Create Document Embeddings"):
     create_vector_embedding()
-    st.success("Vector Database is ready!")
 
 # Generate summary if query exists
 if user_prompt and "vectors" in st.session_state:
@@ -88,7 +101,7 @@ if user_prompt and "vectors" in st.session_state:
         height=200
     )
 
-    # Optional: show document chunks in expander
+    # Optional: show document chunks
     with st.expander("Document similarity search"):
         for i, doc in enumerate(response['context']):
             st.write(doc.page_content)
