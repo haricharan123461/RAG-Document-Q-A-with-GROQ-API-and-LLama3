@@ -8,19 +8,27 @@ from langchain.prompts import ChatPromptTemplate
 from langchain.chains import create_retrieval_chain
 from langchain_community.vectorstores import FAISS
 from langchain_community.document_loaders import PyPDFDirectoryLoader
+import time
 
-from dotenv import load_dotenv
-load_dotenv()
+# -----------------------------
+# Load API keys securely from Streamlit Secrets
+# -----------------------------
+# Add in Streamlit Secrets:
+# GROQ_API_KEY = "your_groq_key_here"
+# OPENAI_API_KEY = "your_openai_key_here"
+os.environ["GROQ_API_KEY"] = st.secrets["GROQ_API_KEY"]
+os.environ["OPENAI_API_KEY"] = st.secrets["OPENAI_API_KEY"]
 
-# Set API keys
-os.environ['OPENAI_API_KEY'] = os.getenv("OPENAI_API_KEY")
-os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY")
-groq_api_key = os.getenv("GROQ_API_KEY")
+groq_api_key = os.environ["GROQ_API_KEY"]
 
-# Initialize LLM
+# -----------------------------
+# Initialize Groq LLM
+# -----------------------------
 llm = ChatGroq(groq_api_key=groq_api_key, model_name="llama3-70b-8192")
 
+# -----------------------------
 # Define prompt template
+# -----------------------------
 prompt = ChatPromptTemplate.from_template(
     """ 
     Answer the questions based on the provided context only.
@@ -32,12 +40,14 @@ prompt = ChatPromptTemplate.from_template(
     """
 )
 
+# -----------------------------
 # Function to create vector embeddings
+# -----------------------------
 def create_vector_embedding():
     if "vectors" not in st.session_state:
-        st.session_state.embeddings = OpenAIEmbeddings()
-        st.session_state.loader = PyPDFDirectoryLoader("research_papers")   # data ingestion
-        st.session_state.docs = st.session_state.loader.load()  # load PDFs
+        st.session_state.embeddings = OpenAIEmbeddings()  # uses OpenAI key securely
+        st.session_state.loader = PyPDFDirectoryLoader("research_papers")
+        st.session_state.docs = st.session_state.loader.load()
         st.session_state.text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=10000, chunk_overlap=300
         )
@@ -48,7 +58,9 @@ def create_vector_embedding():
             st.session_state.final_documents, st.session_state.embeddings
         )
 
+# -----------------------------
 # Streamlit UI
+# -----------------------------
 st.title("RAG Document Q&A With Groq And LLaMA3")
 
 # User query input
@@ -60,7 +72,6 @@ if st.button("Create Document Embeddings"):
     st.success("Vector Database is ready!")
 
 # Generate summary if query exists
-import time
 if user_prompt and "vectors" in st.session_state:
     document_chain = create_stuff_documents_chain(llm, prompt)
     retriever = st.session_state.vectors.as_retriever()
