@@ -8,66 +8,77 @@ from langchain.prompts import ChatPromptTemplate
 from langchain.chains import create_retrieval_chain
 from langchain_community.vectorstores import FAISS
 from langchain_community.document_loaders import PyPDFDirectoryLoader
-from langchain_community.embeddings import OllamaEmbeddings
 
 from dotenv import load_dotenv
 load_dotenv()
 
-## load the GROQ API KEY
+# Set API keys
 os.environ['OPENAI_API_KEY'] = os.getenv("OPENAI_API_KEY")
 os.environ["GROQ_API_KEY"] = os.getenv("GROQ_API_KEY")
 groq_api_key = os.getenv("GROQ_API_KEY")
 
-llm = ChatGroq(groq_api_key=groq_api_key,model_name = "llama3-70b-8192")
+# Initialize LLM
+llm = ChatGroq(groq_api_key=groq_api_key, model_name="llama3-70b-8192")
 
+# Define prompt template
 prompt = ChatPromptTemplate.from_template(
     """ 
     Answer the questions based on the provided context only.
-    please provide the most accurate response based on the question.
+    Please provide the most accurate response based on the question.
     <context>
     {context}
     <context>
     Question: {input}
     """
-
 )
 
+# Function to create vector embeddings
 def create_vector_embedding():
     if "vectors" not in st.session_state:
         st.session_state.embeddings = OpenAIEmbeddings()
-        st.session_state.loader = PyPDFDirectoryLoader("research_papers")   #data ingestion step
-        st.session_state.docs = st.session_state.loader.load()  # document loading
-        st.session_state.text_splitter = RecursiveCharacterTextSplitter(chunk_size = 10000, chunk_overlap = 300)  # text splitting
-        st.session_state.final_documents = st.session_state.text_splitter.split_documents(st.session_state.docs[:50])  # text splitting
-        st.session_state.vectors = FAISS.from_documents(st.session_state.final_documents, st.session_state.embeddings)  # vectorization
+        st.session_state.loader = PyPDFDirectoryLoader("research_papers")   # data ingestion
+        st.session_state.docs = st.session_state.loader.load()  # load PDFs
+        st.session_state.text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=10000, chunk_overlap=300
+        )
+        st.session_state.final_documents = st.session_state.text_splitter.split_documents(
+            st.session_state.docs[:50]
+        )
+        st.session_state.vectors = FAISS.from_documents(
+            st.session_state.final_documents, st.session_state.embeddings
+        )
 
-st.title("RAG Document Q&A With Groq And LLama3")
+# Streamlit UI
+st.title("RAG Document Q&A With Groq And LLaMA3")
 
-user_prompt = st.text_input("Enter your query from the research paper")
+# User query input
+user_prompt = st.text_input("Enter your query from the research papers")
 
-if st.button("Document Embedding"):
+# Button to create vector DB
+if st.button("Create Document Embeddings"):
     create_vector_embedding()
-    st.write("vector Database is ready")
+    st.success("Vector Database is ready!")
 
+# Generate summary if query exists
 import time
-
-if user_prompt:
-    document_chain = create_stuff_documents_chain(llm,prompt)
-    retriever = st.session_state.vectors.as_retriever()  #retriever acts like an interface that passes queries to the vector store
+if user_prompt and "vectors" in st.session_state:
+    document_chain = create_stuff_documents_chain(llm, prompt)
+    retriever = st.session_state.vectors.as_retriever()
     retrieval_chain = create_retrieval_chain(retriever, document_chain)
 
     start = time.process_time()
-    response = retrieval_chain.invoke({'input':user_prompt})
-    print(f"Response time: {time.process_time() - start}")
+    response = retrieval_chain.invoke({'input': user_prompt})
+    st.write(f"Response time: {time.process_time() - start:.2f} seconds")
 
-    st.write(response['answer'])
+    # Editable summary
+    editable_summary = st.text_area(
+        "Generated Summary (Editable)", 
+        value=response['answer'], 
+        height=200
+    )
 
-    ## with a stramlit expander
+    # Optional: show document chunks in expander
     with st.expander("Document similarity search"):
-        for i,doc in enumerate(response['context']):
+        for i, doc in enumerate(response['context']):
             st.write(doc.page_content)
             st.write('--------')
-
-
-
-
