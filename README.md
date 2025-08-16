@@ -1,4 +1,4 @@
-deploylink[https://rag-document-q-a-with-groq-api-and-llama3-jycyrku7p6d6rbpmy5p9.streamlit.app/]
+deployedlink[https://ai-powered-textsumarizer-sharer.streamlit.app/]
 
 
 
@@ -104,5 +104,6 @@ It emphasizes **functionality over design** and ensures **user flexibility, secu
 If you want, I can also **create a version with diagrams showing the workflow** of how transcript → AI summary → editable text → email works. This is usually helpful for the project submission.
 
 Do you want me to make that diagram?
+
 
 
